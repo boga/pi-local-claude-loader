@@ -8,8 +8,8 @@ import {
 	appendLocalContextToSystemPrompt,
 	findCaseInsensitiveLocalContextFile,
 	loadLocalClaudeContext,
-} from "../src/index.ts";
-import { DEFAULT_FILE_NAMES, DEFAULT_MAX_CONTEXT_BYTES } from "../src/config_constants.ts";
+} from "#src/index.ts";
+import { DEFAULT_FILE_NAMES, DEFAULT_MAX_CONTEXT_BYTES } from "#src/config_constants.ts";
 
 test("loads case-insensitive claude.local.md from cwd", async () => {
 	const cwd = await mkdtemp(path.join(os.tmpdir(), "pi-local-claude-loader-"));

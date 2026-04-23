@@ -1,8 +1,8 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import * as path from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { DEFAULT_CONFIG, loadConfig, type LocalClaudeLoaderConfig } from "./config.ts";
-import { LOADED_FILE_MESSAGE } from "./config_constants.ts";
+import { DEFAULT_CONFIG, loadConfig, type LocalClaudeLoaderConfig } from "#src/config.ts";
+import { LOADED_FILE_MESSAGE } from "#src/config_constants.ts";
 
 type LoadedLocalContext = {
 	fileName: string;

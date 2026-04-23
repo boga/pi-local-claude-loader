@@ -10,6 +10,9 @@
   "scripts": {
     "test": "node --test test/*.test.ts"
   },
+  "imports": {
+    "#src/*": "./src/*"
+  },
   "pi": {
     "extensions": [
       "./src/index.ts"
