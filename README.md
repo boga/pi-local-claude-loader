@@ -12,7 +12,8 @@ A Pi extension that loads a local context file on `session_start` and appends it
 - Matches configured file names case-insensitively
 - If multiple configured files exist, loads the first configured match only
 - No-ops when no configured file is present
-- Logs which file was loaded or skipped
+- Logs skipped or invalid files at `error` level by default
+- Logs successful file loads at `info` level when enabled
 - Appends local context without replacing existing `CLAUDE.md` / `AGENTS.md`
 - Uses a configurable max size, defaulting to Pi's 50KB output-size convention
 
@@ -28,7 +29,8 @@ Default config:
 ```json
 {
   "fileNames": ["claude.local.md", "agents.local.md"],
-  "maxBytes": 51200
+  "maxBytes": 51200,
+  "logLevel": "error"
 }
 ```
 
@@ -37,7 +39,8 @@ Example:
 ```json
 {
   "fileNames": ["agents.local.md", "claude.local.md"],
-  "maxBytes": 16384
+  "maxBytes": 16384,
+  "logLevel": "info"
 }
 ```
 
