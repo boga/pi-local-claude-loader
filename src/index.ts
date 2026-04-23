@@ -1,22 +1,8 @@
-import { existsSync, readFileSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import * as path from "node:path";
-import { getAgentDir, type ExtensionAPI } from "@mariozechner/pi-coding-agent";
-
-const DEFAULT_FILE_NAMES = ["claude.local.md", "agents.local.md"];
-const DEFAULT_MAX_CONTEXT_BYTES = 50 * 1024;
-const EMPTY_FILE_MESSAGE = "Local context file empty; skipping";
-const LOADED_FILE_MESSAGE = "Loaded local context file";
-
-export type LocalClaudeLoaderConfig = {
-	fileNames: string[];
-	maxBytes: number;
-};
-
-const DEFAULT_CONFIG: LocalClaudeLoaderConfig = {
-	fileNames: DEFAULT_FILE_NAMES,
-	maxBytes: DEFAULT_MAX_CONTEXT_BYTES,
-};
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { DEFAULT_CONFIG, loadConfig, type LocalClaudeLoaderConfig } from "./config";
+import { LOADED_FILE_MESSAGE } from "./config_constants";
 
 type LoadedLocalContext = {
 	fileName: string;
@@ -69,45 +55,6 @@ export default function localClaudeLoader(pi: ExtensionAPI) {
 			systemPrompt: appendLocalContextToSystemPrompt(event.systemPrompt, loadedContext),
 		};
 	});
-}
-
-export function loadConfig(cwd: string): LocalClaudeLoaderConfig {
-	const globalConfigPath = path.join(getAgentDir(), "extensions", "claude-local.json");
-	const projectConfigPath = path.join(cwd, ".pi", "extensions", "claude-local.json");
-
-	return {
-		...DEFAULT_CONFIG,
-		...readConfigFile(globalConfigPath),
-		...readConfigFile(projectConfigPath),
-	};
-}
-
-function readConfigFile(configPath: string): Partial<LocalClaudeLoaderConfig> {
-	if (!existsSync(configPath)) {
-		return {};
-	}
-
-	try {
-		const parsed = JSON.parse(readFileSync(configPath, "utf8")) as Partial<LocalClaudeLoaderConfig>;
-		return normalizeConfig(parsed);
-	} catch (error) {
-		console.error(`Warning: Could not parse ${configPath}: ${error}`);
-		return {};
-	}
-}
-
-function normalizeConfig(config: Partial<LocalClaudeLoaderConfig>): Partial<LocalClaudeLoaderConfig> {
-	const normalized: Partial<LocalClaudeLoaderConfig> = {};
-
-	if (Array.isArray(config.fileNames)) {
-		normalized.fileNames = config.fileNames.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
-	}
-
-	if (typeof config.maxBytes === "number" && Number.isFinite(config.maxBytes) && config.maxBytes >= 0) {
-		normalized.maxBytes = config.maxBytes;
-	}
-
-	return normalized;
 }
 
 export async function loadLocalClaudeContext(
@@ -163,10 +110,3 @@ export function appendLocalContextToSystemPrompt(systemPrompt: string, localCont
 	return `${systemPrompt}\n\n## Additional Local Context\n\nThe following content comes from \`${localContext.fileName}\` in the current working directory. Treat it as highest-priority local context. It supplements existing AGENTS.md / CLAUDE.md context and must not replace it.\n\nPath: ${localContext.absolutePath}\n\n\`\`\`md\n${localContext.content}\n\`\`\``;
 }
 
-export const testExports = {
-	DEFAULT_FILE_NAMES,
-	DEFAULT_MAX_CONTEXT_BYTES,
-	DEFAULT_CONFIG,
-	EMPTY_FILE_MESSAGE,
-	LOADED_FILE_MESSAGE,
-};

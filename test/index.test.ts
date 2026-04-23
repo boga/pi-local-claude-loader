@@ -1,5 +1,5 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import * as test from "node:test";
+import * as assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -8,8 +8,8 @@ import {
 	appendLocalContextToSystemPrompt,
 	findCaseInsensitiveLocalContextFile,
 	loadLocalClaudeContext,
-	testExports,
-} from "../src/index.ts";
+} from "../src/index";
+import { DEFAULT_FILE_NAMES, DEFAULT_MAX_CONTEXT_BYTES } from "../src/config_constants";
 
 test("loads case-insensitive claude.local.md from cwd", async () => {
 	const cwd = await mkdtemp(path.join(os.tmpdir(), "pi-local-claude-loader-"));
@@ -36,7 +36,7 @@ test("checks only the current working directory", async () => {
 	const cwd = path.join(root, "cwd");
 	const nested = path.join(cwd, "nested");
 	await mkdir(nested, { recursive: true });
-	await writeFile(path.join(nested, testExports.DEFAULT_FILE_NAMES[0]), "nested only");
+	await writeFile(path.join(nested, DEFAULT_FILE_NAMES[0]), "nested only");
 
 	const match = await findCaseInsensitiveLocalContextFile(cwd);
 
@@ -70,20 +70,20 @@ test("loads agents.local.md when claude.local.md is absent", async () => {
 
 test("returns empty for blank files", async () => {
 	const cwd = await mkdtemp(path.join(os.tmpdir(), "pi-local-claude-loader-"));
-	await writeFile(path.join(cwd, testExports.DEFAULT_FILE_NAMES[0]), "   \n\t");
+	await writeFile(path.join(cwd, DEFAULT_FILE_NAMES[0]), "   \n\t");
 
 	const result = await loadLocalClaudeContext(cwd);
 
-	assert.deepEqual(result, { kind: "empty", fileName: testExports.DEFAULT_FILE_NAMES[0] });
+	assert.deepEqual(result, { kind: "empty", fileName: DEFAULT_FILE_NAMES[0] });
 });
 
 test("returns too_large for oversized files", async () => {
 	const cwd = await mkdtemp(path.join(os.tmpdir(), "pi-local-claude-loader-"));
-	await writeFile(path.join(cwd, testExports.DEFAULT_FILE_NAMES[0]), "x".repeat(testExports.DEFAULT_MAX_CONTEXT_BYTES + 1));
+	await writeFile(path.join(cwd, DEFAULT_FILE_NAMES[0]), "x".repeat(DEFAULT_MAX_CONTEXT_BYTES + 1));
 
 	const result = await loadLocalClaudeContext(cwd);
 
-	assert.deepEqual(result, { kind: "too_large", fileName: testExports.DEFAULT_FILE_NAMES[0] });
+	assert.deepEqual(result, { kind: "too_large", fileName: DEFAULT_FILE_NAMES[0] });
 });
 
 test("respects configurable maxBytes", async () => {
