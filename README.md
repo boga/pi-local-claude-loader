@@ -1,19 +1,45 @@
 # pi-local-claude-loader
 
-A Pi extension that loads `claude.local.md` on `session_start` and appends it to the agent's system prompt as additional highest-priority local context.
+A Pi extension that loads a local context file on `session_start` and appends it to the agent's system prompt as additional highest-priority local context.
 
 ## Behavior
 
 - Runs on `session_start`
 - Checks only the current working directory
-- Matches `claude.local.md` case-insensitively
-- No-ops when the file is missing
-- Logs:
-  - `Loaded claude.local.md`
-  - `claude.local.md empty; skipping`
-  - `claude.local.md exceeds 51200 bytes; skipping`
+- By default, looks for these files in order:
+  1. `claude.local.md`
+  2. `agents.local.md`
+- Matches configured file names case-insensitively
+- If multiple configured files exist, loads the first configured match only
+- No-ops when no configured file is present
+- Logs which file was loaded or skipped
 - Appends local context without replacing existing `CLAUDE.md` / `AGENTS.md`
-- Uses Pi's 50KB output-size convention as the safety limit
+- Uses a configurable max size, defaulting to Pi's 50KB output-size convention
+
+## Configuration
+
+Config files are optional. Project config overrides global config.
+
+- Global: `~/.pi/agent/extensions/claude-local.json`
+- Project: `<cwd>/.pi/extensions/claude-local.json`
+
+Default config:
+
+```json
+{
+  "fileNames": ["claude.local.md", "agents.local.md"],
+  "maxBytes": 51200
+}
+```
+
+Example:
+
+```json
+{
+  "fileNames": ["agents.local.md", "claude.local.md"],
+  "maxBytes": 16384
+}
+```
 
 ## Load it
 
@@ -46,4 +72,4 @@ printf '# Local rules\n\n- Prefer tiny commits\n' > claude.local.md
 pi -e /Users/miju/Work/pi-local-claude-loader.fix-pi-extension-loader
 ```
 
-You should see `Loaded claude.local.md` when the session starts.
+You should see `Loaded local context file: claude.local.md` when the session starts.

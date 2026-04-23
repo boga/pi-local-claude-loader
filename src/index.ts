@@ -1,12 +1,22 @@
+import { existsSync, readFileSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { getAgentDir, type ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
-const TARGET_FILE_NAME = "claude.local.md";
-const MAX_CONTEXT_BYTES = 50 * 1024;
-const EMPTY_FILE_MESSAGE = "claude.local.md empty; skipping";
-const LARGE_FILE_MESSAGE = `claude.local.md exceeds ${MAX_CONTEXT_BYTES} bytes; skipping`;
-const LOADED_FILE_MESSAGE = "Loaded claude.local.md";
+const DEFAULT_FILE_NAMES = ["claude.local.md", "agents.local.md"];
+const DEFAULT_MAX_CONTEXT_BYTES = 50 * 1024;
+const EMPTY_FILE_MESSAGE = "Local context file empty; skipping";
+const LOADED_FILE_MESSAGE = "Loaded local context file";
+
+export type LocalClaudeLoaderConfig = {
+	fileNames: string[];
+	maxBytes: number;
+};
+
+const DEFAULT_CONFIG: LocalClaudeLoaderConfig = {
+	fileNames: DEFAULT_FILE_NAMES,
+	maxBytes: DEFAULT_MAX_CONTEXT_BYTES,
+};
 
 type LoadedLocalContext = {
 	fileName: string;
@@ -14,32 +24,39 @@ type LoadedLocalContext = {
 	content: string;
 };
 
+type MatchedLocalContextFile = {
+	configuredName: string;
+	matchedFileName: string;
+	absolutePath: string;
+};
+
 type LoadResult =
 	| { kind: "missing" }
-	| { kind: "empty" }
-	| { kind: "too_large" }
+	| { kind: "empty"; fileName: string }
+	| { kind: "too_large"; fileName: string }
 	| { kind: "loaded"; context: LoadedLocalContext };
 
 export default function localClaudeLoader(pi: ExtensionAPI) {
 	let loadedContext: LoadedLocalContext | undefined;
 
 	pi.on("session_start", async (_event, ctx) => {
-		const result = await loadLocalClaudeContext(ctx.cwd);
+		const config = loadConfig(ctx.cwd);
+		const result = await loadLocalClaudeContext(ctx.cwd, config);
 
 		if (result.kind === "loaded") {
 			loadedContext = result.context;
-			console.log(LOADED_FILE_MESSAGE);
+			console.log(`${LOADED_FILE_MESSAGE}: ${result.context.fileName}`);
 			return;
 		}
 
 		loadedContext = undefined;
 
 		if (result.kind === "empty") {
-			console.log(EMPTY_FILE_MESSAGE);
+			console.log(`${result.fileName} empty; skipping`);
 		}
 
 		if (result.kind === "too_large") {
-			console.log(LARGE_FILE_MESSAGE);
+			console.log(`${result.fileName} exceeds ${config.maxBytes} bytes; skipping`);
 		}
 	});
 
@@ -54,36 +71,92 @@ export default function localClaudeLoader(pi: ExtensionAPI) {
 	});
 }
 
-export async function loadLocalClaudeContext(cwd: string): Promise<LoadResult> {
-	const matchedFileName = await findCaseInsensitiveClaudeLocalFile(cwd);
-	if (!matchedFileName) {
+export function loadConfig(cwd: string): LocalClaudeLoaderConfig {
+	const globalConfigPath = path.join(getAgentDir(), "extensions", "claude-local.json");
+	const projectConfigPath = path.join(cwd, ".pi", "extensions", "claude-local.json");
+
+	return {
+		...DEFAULT_CONFIG,
+		...readConfigFile(globalConfigPath),
+		...readConfigFile(projectConfigPath),
+	};
+}
+
+function readConfigFile(configPath: string): Partial<LocalClaudeLoaderConfig> {
+	if (!existsSync(configPath)) {
+		return {};
+	}
+
+	try {
+		const parsed = JSON.parse(readFileSync(configPath, "utf8")) as Partial<LocalClaudeLoaderConfig>;
+		return normalizeConfig(parsed);
+	} catch (error) {
+		console.error(`Warning: Could not parse ${configPath}: ${error}`);
+		return {};
+	}
+}
+
+function normalizeConfig(config: Partial<LocalClaudeLoaderConfig>): Partial<LocalClaudeLoaderConfig> {
+	const normalized: Partial<LocalClaudeLoaderConfig> = {};
+
+	if (Array.isArray(config.fileNames)) {
+		normalized.fileNames = config.fileNames.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+	}
+
+	if (typeof config.maxBytes === "number" && Number.isFinite(config.maxBytes) && config.maxBytes >= 0) {
+		normalized.maxBytes = config.maxBytes;
+	}
+
+	return normalized;
+}
+
+export async function loadLocalClaudeContext(
+	cwd: string,
+	config: LocalClaudeLoaderConfig = DEFAULT_CONFIG,
+): Promise<LoadResult> {
+	const matchedFile = await findCaseInsensitiveLocalContextFile(cwd, config.fileNames);
+	if (!matchedFile) {
 		return { kind: "missing" };
 	}
 
-	const absolutePath = path.join(cwd, matchedFileName);
-	const fileStats = await stat(absolutePath);
-	if (fileStats.size > MAX_CONTEXT_BYTES) {
-		return { kind: "too_large" };
+	const fileStats = await stat(matchedFile.absolutePath);
+	if (fileStats.size > config.maxBytes) {
+		return { kind: "too_large", fileName: matchedFile.matchedFileName };
 	}
 
-	const content = await readFile(absolutePath, "utf8");
+	const content = await readFile(matchedFile.absolutePath, "utf8");
 	if (content.trim().length === 0) {
-		return { kind: "empty" };
+		return { kind: "empty", fileName: matchedFile.matchedFileName };
 	}
 
 	return {
 		kind: "loaded",
 		context: {
-			fileName: matchedFileName,
-			absolutePath,
+			fileName: matchedFile.matchedFileName,
+			absolutePath: matchedFile.absolutePath,
 			content,
 		},
 	};
 }
 
-export async function findCaseInsensitiveClaudeLocalFile(cwd: string): Promise<string | undefined> {
+export async function findCaseInsensitiveLocalContextFile(
+	cwd: string,
+	fileNames: string[] = DEFAULT_CONFIG.fileNames,
+): Promise<MatchedLocalContextFile | undefined> {
 	const entries = await readdir(cwd, { withFileTypes: true });
-	return entries.find((entry) => entry.isFile() && entry.name.toLowerCase() === TARGET_FILE_NAME)?.name;
+
+	for (const configuredName of fileNames) {
+		const matchedEntry = entries.find(
+			(entry) => entry.isFile() && entry.name.toLowerCase() === configuredName.toLowerCase(),
+		);
+		if (matchedEntry) {
+			return {
+				configuredName,
+				matchedFileName: matchedEntry.name,
+				absolutePath: path.join(cwd, matchedEntry.name),
+			};
+		}
+	}
 }
 
 export function appendLocalContextToSystemPrompt(systemPrompt: string, localContext: LoadedLocalContext): string {
@@ -91,9 +164,9 @@ export function appendLocalContextToSystemPrompt(systemPrompt: string, localCont
 }
 
 export const testExports = {
-	TARGET_FILE_NAME,
-	MAX_CONTEXT_BYTES,
+	DEFAULT_FILE_NAMES,
+	DEFAULT_MAX_CONTEXT_BYTES,
+	DEFAULT_CONFIG,
 	EMPTY_FILE_MESSAGE,
-	LARGE_FILE_MESSAGE,
 	LOADED_FILE_MESSAGE,
 };
