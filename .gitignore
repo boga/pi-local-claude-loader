@@ -1,0 +1,35 @@
+CLAUDE.local.md
+PLAN.md
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# local env
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# editor
+.vscode/
+.idea/
+
+# build / coverage
+dist/
+coverage/
+*.tsbuildinfo
+
+# local Pi project data used during testing
+.pi/npm/
+.pi/git/
+.pi/generated-images/
+
+# optional local-only Pi settings
+.pi/settings.local.json
