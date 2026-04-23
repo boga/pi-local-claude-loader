@@ -1,5 +1,5 @@
-import * as test from "node:test";
-import * as assert from "node:assert/strict";
+import { test } from "node:test";
+import assert from "node:assert/strict";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -8,8 +8,8 @@ import {
 	appendLocalContextToSystemPrompt,
 	findCaseInsensitiveLocalContextFile,
 	loadLocalClaudeContext,
-} from "../src/index";
-import { DEFAULT_FILE_NAMES, DEFAULT_MAX_CONTEXT_BYTES } from "../src/config_constants";
+} from "../src/index.ts";
+import { DEFAULT_FILE_NAMES, DEFAULT_MAX_CONTEXT_BYTES } from "../src/config_constants.ts";
 
 test("loads case-insensitive claude.local.md from cwd", async () => {
 	const cwd = await mkdtemp(path.join(os.tmpdir(), "pi-local-claude-loader-"));

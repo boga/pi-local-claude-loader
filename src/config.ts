@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import * as path from "node:path";
 import { getAgentDir } from "@mariozechner/pi-coding-agent";
-import { DEFAULT_FILE_NAMES, DEFAULT_MAX_CONTEXT_BYTES } from "./config_constants";
+import { DEFAULT_FILE_NAMES, DEFAULT_MAX_CONTEXT_BYTES } from "./config_constants.ts";
 
 export type LocalClaudeLoaderConfig = {
 	fileNames: string[];
