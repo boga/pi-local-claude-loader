@@ -2,7 +2,11 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import * as path from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { DEFAULT_CONFIG, loadConfig, type LocalClaudeLoaderConfig } from "#src/config.ts";
-import { LOADED_FILE_MESSAGE } from "#src/config_constants.ts";
+import {
+	EMPTY_FILE_MESSAGE,
+	LOADED_FILE_MESSAGE,
+	MISSING_FILE_MESSAGE,
+} from "#src/config_constants.ts";
 
 type LoadedLocalContext = {
 	fileName: string;
@@ -31,18 +35,22 @@ export default function localClaudeLoader(pi: ExtensionAPI) {
 
 		if (result.kind === "loaded") {
 			loadedContext = result.context;
-			console.log(`${LOADED_FILE_MESSAGE}: ${result.context.fileName}`);
+			logInfo(config, `${LOADED_FILE_MESSAGE}: ${result.context.fileName}`);
 			return;
 		}
 
 		loadedContext = undefined;
 
+		if (result.kind === "missing") {
+			logError(`${MISSING_FILE_MESSAGE}: ${config.fileNames.join(", ")}`);
+		}
+
 		if (result.kind === "empty") {
-			console.log(`${result.fileName} empty; skipping`);
+			logError(`${EMPTY_FILE_MESSAGE}: ${result.fileName}`);
 		}
 
 		if (result.kind === "too_large") {
-			console.log(`${result.fileName} exceeds ${config.maxBytes} bytes; skipping`);
+			logError(`${result.fileName} exceeds ${config.maxBytes} bytes; skipping`);
 		}
 	});
 
@@ -108,5 +116,15 @@ export async function findCaseInsensitiveLocalContextFile(
 
 export function appendLocalContextToSystemPrompt(systemPrompt: string, localContext: LoadedLocalContext): string {
 	return `${systemPrompt}\n\n## Additional Local Context\n\nThe following content comes from \`${localContext.fileName}\` in the current working directory. Treat it as highest-priority local context. It supplements existing AGENTS.md / CLAUDE.md context and must not replace it.\n\nPath: ${localContext.absolutePath}\n\n\`\`\`md\n${localContext.content}\n\`\`\``;
+}
+
+function logInfo(config: LocalClaudeLoaderConfig, message: string): void {
+	if (config.logLevel === "info") {
+		console.info(message);
+	}
+}
+
+function logError(message: string): void {
+	console.error(message);
 }
 

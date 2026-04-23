@@ -9,7 +9,12 @@ import {
 	findCaseInsensitiveLocalContextFile,
 	loadLocalClaudeContext,
 } from "#src/index.ts";
-import { DEFAULT_FILE_NAMES, DEFAULT_MAX_CONTEXT_BYTES } from "#src/config_constants.ts";
+import {
+	DEFAULT_FILE_NAMES,
+	DEFAULT_LOG_LEVEL,
+	DEFAULT_MAX_CONTEXT_BYTES,
+} from "#src/config_constants.ts";
+import { DEFAULT_CONFIG } from "#src/config.ts";
 
 test("loads case-insensitive claude.local.md from cwd", async () => {
 	const cwd = await mkdtemp(path.join(os.tmpdir(), "pi-local-claude-loader-"));
@@ -93,9 +98,14 @@ test("respects configurable maxBytes", async () => {
 	const result = await loadLocalClaudeContext(cwd, {
 		fileNames: ["agents.local.md"],
 		maxBytes: 4,
+		logLevel: "error",
 	});
 
 	assert.deepEqual(result, { kind: "too_large", fileName: "agents.local.md" });
+});
+
+test("uses error as the default log level", () => {
+	assert.equal(DEFAULT_CONFIG.logLevel, DEFAULT_LOG_LEVEL);
 });
 
 test("appends local context without replacing existing prompt content", () => {
