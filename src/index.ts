@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { readdir, readFile, stat } from "node:fs/promises";
-import path from "node:path";
+import * as path from "node:path";
 import { getAgentDir, type ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 const DEFAULT_FILE_NAMES = ["claude.local.md", "agents.local.md"];
