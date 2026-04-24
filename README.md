@@ -44,7 +44,15 @@ Example:
 }
 ```
 
-## Load it
+## Install
+
+Install the extension from GitHub:
+
+```bash
+pi install git:github.com/boga/pi-local-claude-loader
+```
+
+## Load it locally for development
 
 From this repository root:
 
