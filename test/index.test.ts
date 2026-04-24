@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import {
+import localClaudeLoader, {
 	appendLocalContextToSystemPrompt,
 	findCaseInsensitiveLocalContextFile,
 	loadLocalClaudeContext,
@@ -34,6 +34,30 @@ test("returns missing when no configured local context file exists", async () =>
 	const result = await loadLocalClaudeContext(cwd);
 
 	assert.deepEqual(result, { kind: "missing" });
+});
+
+test("does not log when no configured local context file exists", async () => {
+	const cwd = await mkdtemp(path.join(os.tmpdir(), "pi-local-claude-loader-"));
+	const handlers: Record<string, Function> = {};
+	const errors: string[] = [];
+	const originalConsoleError = console.error;
+	console.error = (...args: unknown[]) => {
+		errors.push(args.join(" "));
+	};
+
+	try {
+		localClaudeLoader({
+			on(event: string, handler: Function) {
+				handlers[event] = handler;
+			},
+		} as any);
+
+		assert.equal(typeof handlers.session_start, "function");
+		await handlers.session_start({}, { cwd });
+		assert.deepEqual(errors, []);
+	} finally {
+		console.error = originalConsoleError;
+	}
 });
 
 test("checks only the current working directory", async () => {

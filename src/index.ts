@@ -2,11 +2,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import * as path from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { DEFAULT_CONFIG, loadConfig, type LocalClaudeLoaderConfig } from "#src/config.ts";
-import {
-	EMPTY_FILE_MESSAGE,
-	LOADED_FILE_MESSAGE,
-	MISSING_FILE_MESSAGE,
-} from "#src/config_constants.ts";
+import { EMPTY_FILE_MESSAGE, LOADED_FILE_MESSAGE } from "#src/config_constants.ts";
 
 type LoadedLocalContext = {
 	fileName: string;
@@ -40,10 +36,6 @@ export default function localClaudeLoader(pi: ExtensionAPI) {
 		}
 
 		loadedContext = undefined;
-
-		if (result.kind === "missing") {
-			logError(`${MISSING_FILE_MESSAGE}: ${config.fileNames.join(", ")}`);
-		}
 
 		if (result.kind === "empty") {
 			logError(`${EMPTY_FILE_MESSAGE}: ${result.fileName}`);
